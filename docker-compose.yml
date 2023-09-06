@@ -1,0 +1,62 @@
+version: '3.7'
+services:
+  nginx:
+    restart: always
+    image: nginx:1.23.3-alpine
+    ports:
+      - "5005:5005"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./logging/nginx:/var/log/nginx
+      - ./client/build:/www
+    depends_on:
+      - mm-api
+
+  mm-api:
+    build: "."
+    restart: always
+    image: kcrc/fastapi-pgsql:0.0.2
+    ports:
+      - "8706:8706"
+    volumes:
+      - ./api/src:/src
+    secrets:
+      - oauth_secret_key
+      - postgres_host
+      - postgres_database
+      - postgres_user
+      - postgres_password
+      - marketo_base_url
+      - marketo_client_id
+      - marketo_client_secret
+    environment:
+      - ENVIRONMENT
+      - OAUTH_SECRET_KEY_FILE=/run/secrets/oauth_secret_key
+      - OAUTH_ALGORITHM=HS256
+      - LDAP_SERVER=ldap://ldap.chrobinson.com:389
+      - LDAP_DOMAIN=chr
+      - POSTGRES_HOST_FILE=postgres_host
+      - POSTGRES_DATABASE_FILE=/run/secrets/postgres_database
+      - POSTGRES_USER_FILE=/run/secrets/postgres_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - MARKETO_BASE_URL_FILE=/run/secrets/marketo_base_url
+      - MARKETO_CLIENT_ID_FILE=/run/secrets/marketo_client_id
+      - MARKET_CLIENT_SECRET_FILE=/run/secrets/marketo_client_secret
+    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8706 --reload"
+secrets:
+  oauth_secret_key:
+    file: ./secrets/oauth_secret_key
+  postgres_host:
+    file: ./secrets/postgres_host
+  postgres_database:
+    file: ./secrets/postgres_database
+  postgres_user:
+    file: ./secrets/postgres_user
+  postgres_password:
+    file: ./secrets/postgres_password
+  marketo_base_url:
+    file: ./secrets/marketo_base_url
+  marketo_client_id:
+    file: ./secrets/marketo_client_id
+  marketo_client_secret:
+    file: ./secrets/marketo_client_secret
